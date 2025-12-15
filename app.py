@@ -1,84 +1,105 @@
-from skimage.feature import hog
-import cv2
 import os
 import numpy as np
+import pickle
+from PIL import Image
 from sklearn.model_selection import train_test_split
-from sklearn.svm import SVC
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score
-from img2vec_pytorch import Img2Vec
-from PIL import Image
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.svm import SVC
+from img2vec_pytorch import Img2Vec
+from sklearn.model_selection import GridSearchCV
+
 
 input_dir = "./dataset"
 categories = ["cardboard","glass","metal","paper","plastic","trash"]
 
-data = []
-labels = []
+# Initialize Img2Vec
 img2vec = Img2Vec()
 
-def augment_pil(img):
-    imgs = [img]
-    imgs.append(img.transpose(Image.FLIP_LEFT_RIGHT))
-    imgs.append(img.rotate(15))
-    imgs.append(img.rotate(-15))
-    
-    return imgs
+features_file = "features.npy"
+labels_file = "labels.npy"
 
-def extract_features(img):
-    img = cv2.resize(img, (64,48))
+if os.path.exists(features_file) and os.path.exists(labels_file):
+    print("Loading cached features...")
+    data = np.load(features_file)
+    labels = np.load(labels_file)
+else:
+    data = []
+    labels = []
 
-    # --- HOG ---
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    hog_features = hog(
-    gray,
-    orientations=9,
-    pixels_per_cell=(8, 8),
-    cells_per_block=(2, 2),
-    block_norm='L2-Hys',
-    transform_sqrt=True,
-    feature_vector=True
-    )
+    def augment_pil(img):
+        imgs = [img]
+        imgs.append(img.transpose(Image.FLIP_LEFT_RIGHT))
+        imgs.append(img.rotate(15))
+        imgs.append(img.rotate(-15))
+        return imgs
 
-    # --- Color Histogram ---
-    hist = cv2.calcHist([img], [0,1,2], None, [16,16,16], [0,256,0,256,0,256])
-    hist = cv2.normalize(hist, hist).flatten()
+    def extract_features(pil_img):
+        features = img2vec.get_vec(pil_img)
+        return features.flatten()
 
-    return np.hstack((hog_features, hist))
+    # Load dataset
+    for label_index, category in enumerate(categories):
+        category_path = os.path.join(input_dir, category)
+        for file in os.listdir(category_path):
+            img_path = os.path.join(category_path, file)
+            try:
+                img = Image.open(img_path).convert("RGB")
+            except Exception as e:
+                print("Skipped corrupted image:", img_path)
+                continue
 
-for label_index, category in enumerate(categories):
-    for file in os.listdir(os.path.join(input_dir, category)):
-        img_path = os.path.join(input_dir, category, file)
-        try:
-            img = Image.open(img_path).convert("RGB")
-        except Exception as e:
-            print("Skipped corrupted image:", img_path)
-            continue
+            for aug in augment_pil(img):
+                feats = extract_features(aug)
+                data.append(feats)
+                labels.append(label_index)
+                
+    np.save(features_file, data)
+    np.save(labels_file, labels)            
 
-        augmented_imgs = augment_pil(img)
+    data = np.array(data)
+    labels = np.array(labels)
 
-        for aug in augmented_imgs:
-            aug_cv = cv2.cvtColor(np.array(aug), cv2.COLOR_RGB2BGR)
-            features = extract_features(aug_cv)
-            data.append(features)
-            labels.append(label_index)
-        
+# Split dataset
+X_train, X_test, y_train, y_test = train_test_split(
+    data, labels, test_size=0.2, shuffle=True, stratify=labels
+)
 
-data = np.array(data)
-labels = np.array(labels)
-
-X_train, X_test, y_train, y_test = train_test_split(data, labels, test_size=0.2, shuffle=True)
-
+# Scale features
 scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-#svm_classifier = SVC(kernel='rbf',gamma='scale',C=10)
-#svm_classifier.fit(X_train, y_train)
+# Initialize classifiers
+svm_classifier = SVC(kernel= "rbf", C= 10, gamma="scale")
+knn_classifier = KNeighborsClassifier(n_neighbors=3,metric="euclidean",weights="distance")
 
-knn_classifer = KNeighborsClassifier(n_neighbors=5, weights='distance')
-knn_classifer.fit(X_train, y_train)
+svm_classifier.fit(X_train, y_train)
+knn_classifier.fit(X_train,y_train)
+# Test accuracy
 
 
-y_pred = knn_classifer.predict(X_test)
-print("Accuracy:", accuracy_score(y_test, y_pred))
+y_pred_svm_train = svm_classifier.predict(X_train)
+y_pred_knn_train = knn_classifier.predict(X_train)
+
+y_pred_svm = svm_classifier.predict(X_test)
+y_pred_knn = knn_classifier.predict(X_test)
+
+print("SVM train Accuracy:", accuracy_score(y_train, y_pred_svm_train))
+print("KNN train Accuracy:", accuracy_score(y_train, y_pred_knn_train))
+
+print("SVM test Accuracy:", accuracy_score(y_test, y_pred_svm))
+print("KNN test Accuracy:", accuracy_score(y_test, y_pred_knn))
+
+
+#save models
+
+with open("models/svm_model.pkl", "wb") as f:
+    pickle.dump(svm_classifier,f)
+
+with open("models/knn_model.pkl", "wb") as f:
+    pickle.dump(knn_classifier,f)
+
+with open("models/scaler_model.pkl" , "wb")as f:
+    pickle.dump(scaler,f)
