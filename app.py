@@ -26,7 +26,7 @@ def augment_pil(img):
     return imgs
 
 def extract_features(img):
-    img = cv2.resize(img, (64,64))
+    img = cv2.resize(img, (64,48))
 
     # --- HOG ---
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -36,6 +36,7 @@ def extract_features(img):
     pixels_per_cell=(8, 8),
     cells_per_block=(2, 2),
     block_norm='L2-Hys',
+    transform_sqrt=True,
     feature_vector=True
     )
 
@@ -72,12 +73,12 @@ scaler = StandardScaler()
 X_train = scaler.fit_transform(X_train)
 X_test = scaler.transform(X_test)
 
-svm_classifier = SVC(kernel='rbf', gamma='scale', C=10)
-svm_classifier.fit(X_train, y_train)
+#svm_classifier = SVC(kernel='rbf',gamma='scale',C=10)
+#svm_classifier.fit(X_train, y_train)
 
-#knn_classifer = KNeighborsClassifier(n_neighbors=7, weights='distance')
-#knn_classifer.fit(X_train, y_train)
+knn_classifer = KNeighborsClassifier(n_neighbors=5, weights='distance')
+knn_classifer.fit(X_train, y_train)
 
 
-y_pred = svm_classifier.predict(X_test)
+y_pred = knn_classifer.predict(X_test)
 print("Accuracy:", accuracy_score(y_test, y_pred))
