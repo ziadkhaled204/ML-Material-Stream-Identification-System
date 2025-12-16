@@ -9,6 +9,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from img2vec_pytorch import Img2Vec
 from sklearn.model_selection import GridSearchCV
+from PIL import ImageEnhance
 
 
 input_dir = "./dataset"
@@ -30,15 +31,37 @@ else:
 
     def augment_pil(img):
         imgs = [img]
+        
+        #zoom
+        width, height = img.size
+        left = int(0.05*width)
+        top = int(0.05*height)
+        right = int(0.95*width)
+        bottom = int(0.95*height)
+        img.crop((left, top, right, bottom)).resize((width, height))
+
+        # Flips
         imgs.append(img.transpose(Image.FLIP_LEFT_RIGHT))
+
+        # Rotations
         imgs.append(img.rotate(15))
         imgs.append(img.rotate(-15))
+
+        # Brightness/Contrast
+        enhancer = ImageEnhance.Brightness(img)
+        imgs.append(enhancer.enhance(1.2))
+        imgs.append(enhancer.enhance(0.8))
+
+        enhancer = ImageEnhance.Contrast(img)
+        imgs.append(enhancer.enhance(1.2))
+        imgs.append(enhancer.enhance(0.8))
+
         return imgs
 
     def extract_features(pil_img):
         features = img2vec.get_vec(pil_img)
         return features.flatten()
-
+    
     # Load dataset
     for label_index, category in enumerate(categories):
         category_path = os.path.join(input_dir, category)
@@ -46,14 +69,15 @@ else:
             img_path = os.path.join(category_path, file)
             try:
                 img = Image.open(img_path).convert("RGB")
+                for aug in augment_pil(img):
+                    feats = extract_features(aug)
+                    data.append(feats)           # add each augmented image
+                    labels.append(label_index)   # same label
             except Exception as e:
                 print("Skipped corrupted image:", img_path)
                 continue
 
-            for aug in augment_pil(img):
-                feats = extract_features(aug)
-                data.append(feats)
-                labels.append(label_index)
+            
                 
     np.save(features_file, data)
     np.save(labels_file, labels)            
