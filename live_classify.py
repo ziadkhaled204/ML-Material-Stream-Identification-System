@@ -53,7 +53,7 @@ while cap.isOpened():
     features = extract_features(pil_img)
     features_scaled = scaler.transform([features])
 
-    # --- SVM ---
+    # SVM
     svm_scores = svm_classifier.decision_function(features_scaled)
     max_svm_score = np.max(svm_scores)
     if max_svm_score < threshold_svm:
@@ -62,7 +62,7 @@ while cap.isOpened():
         svm_index = svm_classifier.predict(features_scaled)[0]
         svm_label = categories[svm_index]
 
-    # --- KNN ---
+    # KNN 
     knn_proba = knn_classifier.predict_proba(features_scaled)
     max_knn_prob = np.max(knn_proba)
     
