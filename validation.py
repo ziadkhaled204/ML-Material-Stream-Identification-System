@@ -5,9 +5,6 @@ import numpy as np
 from PIL import Image
 from img2vec_pytorch import Img2Vec
 
-# -----------------------------
-# Load saved models and scaler
-# -----------------------------
 with open("models/svm_model.pkl", "rb") as f:
     svm_classifier = pickle.load(f)
 

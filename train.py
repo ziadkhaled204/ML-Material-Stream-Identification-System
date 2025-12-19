@@ -8,7 +8,6 @@ from sklearn.metrics import accuracy_score
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC
 from img2vec_pytorch import Img2Vec
-from sklearn.model_selection import GridSearchCV
 from PIL import ImageEnhance
 
 
