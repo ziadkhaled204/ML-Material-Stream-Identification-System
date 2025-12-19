@@ -97,10 +97,10 @@ X_test = scaler.transform(X_test)
 
 # Initialize classifiers
 svm_classifier = SVC(kernel= "rbf", C= 10, gamma="scale")
-knn_classifier = KNeighborsClassifier(n_neighbors=3,metric="euclidean",weights="distance")
+knn_classifier = KNeighborsClassifier(n_neighbors=7,metric="euclidean",weights="distance")
 
 svm_classifier.fit(X_train, y_train)
-knn_classifier.fit(X_train,y_train)
+knn_classifier.fit(X_train, y_train)
 
 
 # Test accuracy

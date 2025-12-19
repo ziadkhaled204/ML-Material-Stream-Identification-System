@@ -5,9 +5,6 @@ import numpy as np
 from PIL import Image
 from img2vec_pytorch import Img2Vec
 
-# -----------------------------
-# Load saved models and scaler
-# -----------------------------
 with open("models/svm_model.pkl", "rb") as f:
     svm_classifier = pickle.load(f)
 
@@ -33,7 +30,7 @@ def extract_features(pil_img):
 cap = cv2.VideoCapture(0)
 
 # Define ROI box coordinates (x, y, width, height)
-roi_x, roi_y, roi_w, roi_h = 200, 100, 200, 200  # adjust as needed
+roi_x, roi_y, roi_w, roi_h = 200, 200, 200, 200  # adjust as needed
 
 while cap.isOpened():
     ret, frame = cap.read()
